@@ -1,0 +1,149 @@
+:root {
+}
+@keyframes wave-effect {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.container {
+  max-width: 600px;
+  margin: auto;
+  .title {
+    text-align: center;
+    font-size: 30px;
+    font-weight: bold;
+  }
+}
+.x-container {
+  position: fixed;
+  background: #0f141a;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  z-index: -2;
+  .content {
+    position: absolute;
+    margin: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    .logo {
+      font-family: unset;
+      font-weight: bold;
+      font-size: 230px;
+      color: white;
+      line-height: 1;
+    }
+    .text {
+      color: white;
+      font-style: italic;
+      font-weight: bold;
+      font-size: 30px;
+    }
+  }
+  &.show-x {
+    opacity: 1;
+    z-index: 1;
+    transition: 0.5s;
+    & .x {
+      opacity: 1;
+      animation: x-animation 2s 1 cubic-bezier(0.4, 0, 1, 1);
+      animation-fill-mode: both;
+      animation-delay: 0.3s;
+    }
+  }
+  &.show-xs {
+    opacity: 1;
+    z-index: 1;
+    transition: 0.5s;
+    & .xs {
+      opacity: 1;
+      animation: xs-animation 2s 1 cubic-bezier(0.4, 0, 1, 1);
+      animation-fill-mode: both;
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+.start-btn {
+  /* ボタン要素のスタイルをリセット */
+  margin: auto;
+  margin-top: 80px;
+  padding: 0;
+  border: none;
+  outline: none;
+  display: block;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  text-decoration: none;
+  background: #87befd;
+  color: #fff;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+
+  &.start {
+    &:hover {
+      background: #668ad8;
+      transition: 0.4s;
+    }
+  }
+  &.stop {
+    background: #ff6464;
+    &:before {
+      content: '';
+      background: rgba(255, 106, 106, 0.8);
+      position: absolute;
+      z-index: -1;
+      top: 0;
+      left: 0;
+      border-radius: 100px;
+      height: 120px;
+      width: 120px;
+      animation: wave-effect 1.5s infinite ease-in-out;
+    }
+  }
+}
+@keyframes x-animation {
+  0% {
+    transform: translate(calc(-53vw - 300px), -50%) scale(1);
+  }
+  15% {
+    transform: translate(-90%, -50%) scale(1.2);
+  }
+  85% {
+    transform: translate(0%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(55vw, -50%) scale(1);
+  }
+}
+
+@keyframes xs-animation {
+  0% {
+    transform: translate(calc(-59vw - 300px), -50%) scale(1);
+  }
+  15% {
+    transform: translate(-90%, -50%) scale(1.2);
+  }
+  85% {
+    transform: translate(0%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(59vw, -50%) scale(1);
+  }
+}
