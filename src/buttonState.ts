@@ -11,7 +11,7 @@ export class ButtonState {
   }
   public changeState(state: startStop) {
     this._state = state
-    this._element.textContent = state
+    // this._element.textContent = state
     if (state === 'start') {
       this._element.classList.remove('stop')
       this._element.classList.add('start')

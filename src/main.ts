@@ -7,10 +7,13 @@ const main = async () => {
   const SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition
   const recognition = new SpeechRecognition()
   recognition.lang = 'ja-JP'
+  // 暫定の認識結果も取得する
   recognition.interimResults = true
   recognition.continuous = true
-  let audio = new Audio()
-  let audio2 = new Audio()
+  const audios = {
+    X: new Audio('/src/X.wav'),
+    XS: new Audio('/src/Xs.wav'),
+  }
   //ボタンのstart,stopの切り替えをするクラス
   const buttonState = new ButtonState(document.getElementById('start-btn') as HTMLElement)
   //認識が開始されたら、ボタンのテキストをstopにする
@@ -18,8 +21,8 @@ const main = async () => {
     () => {
       recognition.start()
       // X.wavを読み込む
-      audio = new Audio('/src/X.wav')
-      audio2 = new Audio('/src/Xs.wav')
+      audios.X = new Audio('/src/X.wav')
+      audios.XS = new Audio('/src/Xs.wav')
     },
     () => recognition.stop(),
   )
@@ -40,35 +43,29 @@ const main = async () => {
     let interimTranscript = '' // 暫定(灰色)の認識結果
     for (let i = event.resultIndex; i < event.results.length; i++) {
       console.log(event.results[i][0].transcript)
-      const transcript = event.results[i][0].transcript
 
+      const transcript = event.results[event.results.length - 1][0].transcript
+      console.log(event.results)
       if (Date.now() - XlastTime > 1000) {
         if (twitterWords.some((word) => transcript.includes(word))) {
-          console.log('X')
-          audio.play()
+          console.log('X', i)
           XlastTime = Date.now()
-          recognition.stop()
-
+          xContainer.classList.add('show-x')
+          audios.X.play()
           setTimeout(() => {
-            recognition.start()
-          }, 300)
-          setTimeout(() => {
-            recognition.start()
-          }, 500)
+            xContainer.classList.remove('show-x')
+          }, 3000)
         }
       }
       if (Date.now() - XSlastTime > 1000) {
         if (tweetWords.some((word) => transcript.includes(word))) {
           console.log('エクセズ')
-          audio2.play()
           XSlastTime = Date.now()
-          recognition.stop()
+          xContainer.classList.add('show-xs')
+          audios.XS.play()
           setTimeout(() => {
-            recognition.start()
-          }, 300)
-          setTimeout(() => {
-            recognition.start()
-          }, 500)
+            xContainer.classList.remove('show-xs')
+          }, 3000)
         }
       }
 
@@ -83,6 +80,10 @@ const main = async () => {
   recognition.error = (event: any) => {
     console.log('エラーが発生しました。', event.error)
     buttonState.changeState('start')
+  }
+  recognition.onaudiostart = () => {
+    buttonState.changeState('stop')
+    console.log('録音が開始されました。')
   }
   //録音が終了したら、ボタンのテキストをstartにする
   recognition.onend = () => {
