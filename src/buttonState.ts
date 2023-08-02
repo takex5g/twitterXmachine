@@ -1,6 +1,10 @@
 // ボタンのstart,stopの切り替えをするクラス
 
 type startStop = 'start' | 'stop'
+const BUTTON_TEXT = {
+  start: 'はじめる',
+  stop: '認識中',
+}
 
 export class ButtonState {
   private _state: startStop
@@ -11,7 +15,7 @@ export class ButtonState {
   }
   public changeState(state: startStop) {
     this._state = state
-    // this._element.textContent = state
+    this._element.textContent = BUTTON_TEXT[state]
     if (state === 'start') {
       this._element.classList.remove('stop')
       this._element.classList.add('start')

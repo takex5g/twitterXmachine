@@ -76,19 +76,24 @@ const main = async () => {
       let transcriptText = event.results[event.results.length - 1][0].transcript.replace(/\s+/g, '')
       for (const w of W) {
         const { audio, lastTime, words, className, lastRecognitionText, timerId } = recognitionWordObject[w]
-        if (Date.now() - lastTime > 8000) {
-          // 先頭がwordsのどれかに一致していたらlastRecognitionTextを空にする
-          if (words.some((word) => lastRecognitionText.indexOf(word) === 0)) {
-            console.log('8秒経過', lastRecognitionText)
-            recognitionWordObject[w].lastRecognitionText = ''
-          }
-        }
+        // if (Date.now() - lastTime > 8000) {
+        //   // 先頭がwordsのどれかに一致していたらlastRecognitionTextを空にする
+        //   if (words.some((word) => lastRecognitionText.indexOf(word) === 0)) {
+        //     console.log('8秒経過', lastRecognitionText)
+        //     recognitionWordObject[w].lastRecognitionText = ''
+        //   }
+        // }
         if (lastRecognitionText) {
           if (transcriptText.includes(lastRecognitionText)) {
             console.log('lastRecognitionText', lastRecognitionText)
             transcriptText = transcriptText.replace(lastRecognitionText, '')
           }
         }
+        // transcriptTextが15文字以上の場合はlastRecognitionText.length文字目以降を使う
+        if (transcriptText.length > 15) {
+          transcriptText = transcriptText.slice(lastRecognitionText.length)
+        }
+
         if (Date.now() - lastTime > 3000) {
           if (words.some((word) => transcriptText.includes(word))) {
             console.log(lastRecognitionText, transcriptText)
@@ -106,10 +111,6 @@ const main = async () => {
             }
             audio.play()
             console.log('X!!!!')
-            // setTimeout(() => {
-            //   xContainer.classList.remove(className)
-            // }, 3000)
-            // 3秒後にXを消す
             if (timerId) {
               clearTimeout(timerId)
             }
@@ -148,3 +149,14 @@ const main = async () => {
   }
 }
 main()
+
+const twAudio = new Audio('/src/X.wav')
+//.twitterをホバーするとテキストが変わる
+const twitter = document.querySelector('.twitter') as HTMLDivElement
+twitter.addEventListener('mouseover', () => {
+  twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
+  twAudio.play()
+})
+twitter.addEventListener('mouseout', () => {
+  twitter.innerHTML = 'Twitter'
+})
