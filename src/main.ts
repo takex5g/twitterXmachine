@@ -10,9 +10,37 @@ const main = async () => {
   // 暫定の認識結果も取得する
   recognition.interimResults = true
   recognition.continuous = true
-  const audios = {
-    X: new Audio('/src/X.wav'),
-    XS: new Audio('/src/Xs.wav'),
+
+  type W = 'X' | 'XS'
+  type RecognitionWordObject = {
+    [key in W]: {
+      audio: HTMLAudioElement
+      lastTime: number
+      words: string[]
+      className: string
+      lastRecognitionText: string
+      timerId: NodeJS.Timeout | null
+    }
+  }
+
+  const recognitionWordObject: RecognitionWordObject = {
+    X: {
+      audio: new Audio('/src/X.wav'),
+      // 最後に反応してから1秒間は反応しないようにするための変数
+      lastTime: 0,
+      words: ['Twitter', 'ツイッター', 'ついったー', 'ついった', 'ついたー'],
+      className: 'show-x',
+      lastRecognitionText: '',
+      timerId: null,
+    },
+    XS: {
+      audio: new Audio('/src/Xs.wav'),
+      lastTime: 0,
+      words: ['ツイート', 'ついーと', 'ついと'],
+      className: 'show-xs',
+      lastRecognitionText: '',
+      timerId: null,
+    },
   }
   //ボタンのstart,stopの切り替えをするクラス
   const buttonState = new ButtonState(document.getElementById('start-btn') as HTMLElement)
@@ -21,61 +49,89 @@ const main = async () => {
     () => {
       recognition.start()
       // X.wavを読み込む
-      audios.X = new Audio('/src/X.wav')
-      audios.XS = new Audio('/src/Xs.wav')
+      recognitionWordObject.X.audio = new Audio('/src/X.wav')
+      recognitionWordObject.XS.audio = new Audio('/src/Xs.wav')
     },
     () => recognition.stop(),
   )
-
-  //反応する文字列
-  const twitterWords = ['Twitter', 'ツイッター', 'ついったー', 'ついった', 'ついたー']
-  const tweetWords = ['ツイート', 'ついーと', 'ついと']
 
   //.x-container
   const xContainer = document.querySelector('.x-container') as HTMLDivElement
 
   // 確定した(黒の)認識結果
   let finalTranscript = ''
-  // 最後に反応してから1秒間は反応しないようにするための変数
-  let XlastTime = 0
-  let XSlastTime = 0
+
   recognition.onresult = async (event: any) => {
+    const W = ['X', 'XS'] as const
+    console.log(
+      'transcriptText',
+      event.results[event.results.length - 1][0],
+      event.results[event.results.length - 1].isFinal,
+    )
+    //confidenceが0.5以下の場合のみ反応する
+    if (
+      !event.results[event.results.length - 1].isFinal &&
+      event.results[event.results.length - 1][0].confidence < 0.5
+    ) {
+      let transcriptText = event.results[event.results.length - 1][0].transcript.replace(/\s+/g, '')
+      for (const w of W) {
+        const { audio, lastTime, words, className, lastRecognitionText, timerId } = recognitionWordObject[w]
+        if (Date.now() - lastTime > 8000) {
+          // 先頭がwordsのどれかに一致していたらlastRecognitionTextを空にする
+          if (words.some((word) => lastRecognitionText.indexOf(word) === 0)) {
+            console.log('8秒経過', lastRecognitionText)
+            recognitionWordObject[w].lastRecognitionText = ''
+          }
+        }
+        if (lastRecognitionText) {
+          if (transcriptText.includes(lastRecognitionText)) {
+            console.log('lastRecognitionText', lastRecognitionText)
+            transcriptText = transcriptText.replace(lastRecognitionText, '')
+          }
+        }
+        if (Date.now() - lastTime > 3000) {
+          if (words.some((word) => transcriptText.includes(word))) {
+            console.log(lastRecognitionText, transcriptText)
+
+            recognitionWordObject[w].lastTime = Date.now()
+            xContainer.classList.add(className)
+
+            recognitionWordObject[w].lastRecognitionText = transcriptText
+            console.log('lastRecognitionText', recognitionWordObject[w].lastRecognitionText)
+
+            // audio.play()
+            // audioが再生中の場合はaudio.currentTimeを0にする
+            if (!audio.paused) {
+              audio.currentTime = 0
+            }
+            audio.play()
+            console.log('X!!!!')
+            // setTimeout(() => {
+            //   xContainer.classList.remove(className)
+            // }, 3000)
+            // 3秒後にXを消す
+            if (timerId) {
+              clearTimeout(timerId)
+            }
+            recognitionWordObject[w].timerId = setTimeout(() => {
+              xContainer.classList.remove(className)
+            }, 3000)
+          }
+        }
+      }
+    }
     let interimTranscript = '' // 暫定(灰色)の認識結果
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      console.log(event.results[i][0].transcript)
-
-      const transcript = event.results[event.results.length - 1][0].transcript
-      console.log(event.results)
-      if (Date.now() - XlastTime > 1000) {
-        if (twitterWords.some((word) => transcript.includes(word))) {
-          console.log('X', i)
-          XlastTime = Date.now()
-          xContainer.classList.add('show-x')
-          audios.X.play()
-          setTimeout(() => {
-            xContainer.classList.remove('show-x')
-          }, 3000)
-        }
-      }
-      if (Date.now() - XSlastTime > 1000) {
-        if (tweetWords.some((word) => transcript.includes(word))) {
-          console.log('エクセズ')
-          XSlastTime = Date.now()
-          xContainer.classList.add('show-xs')
-          audios.XS.play()
-          setTimeout(() => {
-            xContainer.classList.remove('show-xs')
-          }, 3000)
-        }
-      }
+      const transcript = event.results[i][0].transcript
 
       if (event.results[i].isFinal) {
         finalTranscript += transcript
       } else {
         interimTranscript = transcript
       }
+
+      resultDiv.innerHTML = finalTranscript + '<i style="color:#ddd;">' + interimTranscript + '</i>'
     }
-    resultDiv.innerHTML = finalTranscript + '<i style="color:#ddd;">' + interimTranscript + '</i>'
   }
   recognition.error = (event: any) => {
     console.log('エラーが発生しました。', event.error)
