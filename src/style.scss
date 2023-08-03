@@ -30,15 +30,22 @@
     text-align: center;
     font-size: 30px;
     font-weight: bold;
+    @media screen and (max-width: 520px) {
+      font-size: 24px;
+    }
+    span {
+      display: inline-block;
+    }
   }
   #result-div {
     margin-top: 50px;
     font-size: 16px;
     overflow-wrap: break-word;
-    min-height: 150px;
+    min-height: 100px;
   }
   .profile {
     text-align: center;
+    margin-top: 50px;
     img {
       width: 100px;
       height: 100px;
@@ -49,6 +56,14 @@
       margin-top: 4px;
       font-size: 14px;
     }
+  }
+}
+.footer {
+  margin-top: 50px;
+  p {
+    color: #808080;
+    font-size: 12px;
+    text-align: center;
   }
 }
 .x-container {
@@ -84,6 +99,12 @@
       font-weight: bold;
       font-size: 30px;
     }
+    &.repost {
+      .logo {
+        font-size: 160px;
+        margin-bottom: 20px;
+      }
+    }
   }
   &.show-x {
     display: block;
@@ -109,6 +130,18 @@
       animation-delay: 0.3s;
     }
   }
+  &.show-repost {
+    display: block;
+    opacity: 1;
+    z-index: 1;
+    transition: 0.5s;
+    & .repost {
+      opacity: 1;
+      animation: repost-animation 3s infinite cubic-bezier(0.4, 0, 1, 1);
+      animation-fill-mode: both;
+      animation-delay: 0.3s;
+    }
+  }
 }
 
 .start-btn {
@@ -123,7 +156,7 @@
   height: 100px;
   border-radius: 50%;
   text-decoration: none;
-  background: #87befd;
+  background: #1da1f2;
   color: #fff;
   width: 120px;
   height: 120px;
@@ -134,7 +167,7 @@
 
   &.start {
     &:hover {
-      background: #668ad8;
+      background: #177dbd;
       transition: 0.4s;
     }
   }
@@ -184,5 +217,19 @@
   }
   100% {
     transform: translate(59vw, -50%) scale(1);
+  }
+}
+@keyframes repost-animation {
+  0% {
+    transform: translate(calc(-80vw - 1000px), -50%) scale(1);
+  }
+  15% {
+    transform: translate(-90%, -50%) scale(1.2);
+  }
+  85% {
+    transform: translate(0%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(100vw, -50%) scale(1);
   }
 }

@@ -11,32 +11,45 @@ const main = async () => {
   recognition.interimResults = true
   recognition.continuous = true
 
-  type W = 'X' | 'XS'
+  type W = 'X' | 'XS' | 'REPOST'
   type RecognitionWordObject = {
     [key in W]: {
       audio: HTMLAudioElement
       lastTime: number
       words: string[]
+      excludeWords?: string[]
       className: string
       lastRecognitionText: string
       timerId: NodeJS.Timeout | null
     }
   }
 
+  let twAudio = new Audio('./src/X.wav')
   const recognitionWordObject: RecognitionWordObject = {
     X: {
-      audio: new Audio('/src/X.wav'),
+      audio: new Audio('./src/X.wav'),
       // 最後に反応してから1秒間は反応しないようにするための変数
       lastTime: 0,
       words: ['Twitter', 'ツイッター', 'ついったー', 'ついった', 'ついたー'],
+      excludeWords: [],
       className: 'show-x',
       lastRecognitionText: '',
       timerId: null,
     },
+    REPOST: {
+      audio: new Audio('./src/repost.wav'),
+      lastTime: 0,
+      words: ['リツイート', 'りついーと', 'りついと'],
+      excludeWords: [],
+      className: 'show-repost',
+      lastRecognitionText: '',
+      timerId: null,
+    },
     XS: {
-      audio: new Audio('/src/Xs.wav'),
+      audio: new Audio('./src/Xs.wav'),
       lastTime: 0,
       words: ['ツイート', 'ついーと', 'ついと'],
+      excludeWords: ['リツイート', 'りついーと', 'りついと'],
       className: 'show-xs',
       lastRecognitionText: '',
       timerId: null,
@@ -49,8 +62,10 @@ const main = async () => {
     () => {
       recognition.start()
       // X.wavを読み込む
-      recognitionWordObject.X.audio = new Audio('/src/X.wav')
-      recognitionWordObject.XS.audio = new Audio('/src/Xs.wav')
+      recognitionWordObject.X.audio = new Audio('./src/X.wav')
+      recognitionWordObject.XS.audio = new Audio('./src/Xs.wav')
+      recognitionWordObject.REPOST.audio = new Audio('./src/repost.wav')
+      twAudio = new Audio('./src/X.wav')
     },
     () => recognition.stop(),
   )
@@ -62,12 +77,7 @@ const main = async () => {
   let finalTranscript = ''
 
   recognition.onresult = async (event: any) => {
-    const W = ['X', 'XS'] as const
-    console.log(
-      'transcriptText',
-      event.results[event.results.length - 1][0],
-      event.results[event.results.length - 1].isFinal,
-    )
+    const W = ['X', 'XS', 'REPOST'] as const
     //confidenceが0.5以下の場合のみ反応する
     if (
       !event.results[event.results.length - 1].isFinal &&
@@ -75,7 +85,8 @@ const main = async () => {
     ) {
       let transcriptText = event.results[event.results.length - 1][0].transcript.replace(/\s+/g, '')
       for (const w of W) {
-        const { audio, lastTime, words, className, lastRecognitionText, timerId } = recognitionWordObject[w]
+        const { audio, lastTime, words, excludeWords, className, lastRecognitionText, timerId } =
+          recognitionWordObject[w]
         // if (Date.now() - lastTime > 8000) {
         //   // 先頭がwordsのどれかに一致していたらlastRecognitionTextを空にする
         //   if (words.some((word) => lastRecognitionText.indexOf(word) === 0)) {
@@ -85,24 +96,34 @@ const main = async () => {
         // }
         if (lastRecognitionText) {
           if (transcriptText.includes(lastRecognitionText)) {
-            console.log('lastRecognitionText', lastRecognitionText)
             transcriptText = transcriptText.replace(lastRecognitionText, '')
+            // console.log('lastRecognitionText', lastRecognitionText, 'transcriptText', transcriptText)
           }
         }
         // transcriptTextが15文字以上の場合はlastRecognitionText.length文字目以降を使う
-        if (transcriptText.length > 15) {
-          transcriptText = transcriptText.slice(lastRecognitionText.length)
+        if (transcriptText.length > 15 && lastRecognitionText) {
+          //lastRecognitionText.length -10文字目以降を使う
+          //lastRecognitionText.length - 10が0以下の場合は0を使う
+          const start = lastRecognitionText.length - 6 > 0 ? lastRecognitionText.length - 6 : 0
+          transcriptText = transcriptText.slice(start)
         }
 
         if (Date.now() - lastTime > 3000) {
-          if (words.some((word) => transcriptText.includes(word))) {
-            console.log(lastRecognitionText, transcriptText)
+          //excludeWordsがある場合は、transcriptTextにexcludeWordsが含まれていたら反応しない
+          if (
+            words.some((word) => transcriptText.includes(word)) &&
+            !excludeWords?.some((word) => transcriptText.includes(word))
+          ) {
+            // console.log('last:', lastRecognitionText, 'trans:', transcriptText)
 
             recognitionWordObject[w].lastTime = Date.now()
             xContainer.classList.add(className)
 
-            recognitionWordObject[w].lastRecognitionText = transcriptText
-            console.log('lastRecognitionText', recognitionWordObject[w].lastRecognitionText)
+            //完全一致した場合はlastRecognitionTextを空にする
+            if (!words.some((word) => transcriptText === word)) {
+              recognitionWordObject[w].lastRecognitionText = transcriptText
+              // console.log('lastRecognitionText', lastRecognitionText)
+            }
 
             // audio.play()
             // audioが再生中の場合はaudio.currentTimeを0にする
@@ -110,7 +131,7 @@ const main = async () => {
               audio.currentTime = 0
             }
             audio.play()
-            console.log('X!!!!')
+            // console.log('X!!!!')
             if (timerId) {
               clearTimeout(timerId)
             }
@@ -121,6 +142,14 @@ const main = async () => {
         }
       }
     }
+    if (event.results[event.results.length - 1].isFinal) {
+      //lastRecognitionTextを空にする
+      // console.log('確定したのでlastRecognitionTextを空にする')
+      for (const w of W) {
+        recognitionWordObject[w].lastRecognitionText = ''
+      }
+    }
+
     let interimTranscript = '' // 暫定(灰色)の認識結果
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const transcript = event.results[i][0].transcript
@@ -147,16 +176,18 @@ const main = async () => {
     buttonState.changeState('start')
     console.log('音声認識が終了しました。')
   }
+  //.twitterをホバーするとテキストが変わる
+  const twitter = document.querySelector('.twitter') as HTMLDivElement
+  twitter.addEventListener('mouseover', () => {
+    if (!twAudio) twAudio = new Audio('./src/X.wav')
+    twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
+    if (!twAudio.paused) {
+      twAudio.currentTime = 0
+    }
+    twAudio.play()
+  })
+  twitter.addEventListener('mouseout', () => {
+    twitter.innerHTML = 'Twitter'
+  })
 }
 main()
-
-const twAudio = new Audio('/src/X.wav')
-//.twitterをホバーするとテキストが変わる
-const twitter = document.querySelector('.twitter') as HTMLDivElement
-twitter.addEventListener('mouseover', () => {
-  twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
-  twAudio.play()
-})
-twitter.addEventListener('mouseout', () => {
-  twitter.innerHTML = 'Twitter'
-})
