@@ -11,7 +11,9 @@ const main = async () => {
   recognition.interimResults = true
   recognition.continuous = true
 
-  type W = 'X' | 'XS' | 'REPOST'
+  // type W = 'X' | 'XS' | 'REPOST' | 'QUOTE'
+  const WORDS = ['X', 'XS', 'REPOST', 'QUOTE'] as const
+  type W = (typeof WORDS)[number]
   type RecognitionWordObject = {
     [key in W]: {
       audio: HTMLAudioElement
@@ -40,7 +42,7 @@ const main = async () => {
       audio: new Audio('./src/repost.wav'),
       lastTime: 0,
       words: ['リツイート', 'りついーと', 'りついと'],
-      excludeWords: [],
+      excludeWords: ['引用リツイート', '引用りついーと', '引用りついと'],
       className: 'show-repost',
       lastRecognitionText: '',
       timerId: null,
@@ -49,8 +51,17 @@ const main = async () => {
       audio: new Audio('./src/Xs.wav'),
       lastTime: 0,
       words: ['ツイート', 'ついーと', 'ついと'],
-      excludeWords: ['リツイート', 'りついーと', 'りついと'],
+      excludeWords: ['リツイート', 'りついーと', 'りついと', '引用ツイート', '引用ついーと', '引用ついと'],
       className: 'show-xs',
+      lastRecognitionText: '',
+      timerId: null,
+    },
+    QUOTE: {
+      audio: new Audio('./src/quote.wav'),
+      lastTime: 0,
+      words: ['引用ツイート', '引用ついーと', '引用ついと', '引用リツイート', '引用りついーと', '引用りついと'],
+      excludeWords: [],
+      className: 'show-quote',
       lastRecognitionText: '',
       timerId: null,
     },
@@ -61,11 +72,10 @@ const main = async () => {
   buttonState.addEvent(
     () => {
       recognition.start()
-      // X.wavを読み込む
-      recognitionWordObject.X.audio = new Audio('./src/X.wav')
-      recognitionWordObject.XS.audio = new Audio('./src/Xs.wav')
-      recognitionWordObject.REPOST.audio = new Audio('./src/repost.wav')
-      twAudio = new Audio('./src/X.wav')
+      // safariで音声認識をするためには、ユーザーの操作が必要なのでここでaudioを読み込む
+      for (const w of WORDS) {
+        recognitionWordObject[w].audio.load()
+      }
     },
     () => recognition.stop(),
   )
@@ -77,14 +87,13 @@ const main = async () => {
   let finalTranscript = ''
 
   recognition.onresult = async (event: any) => {
-    const W = ['X', 'XS', 'REPOST'] as const
     //confidenceが0.5以下の場合のみ反応する
     if (
       !event.results[event.results.length - 1].isFinal &&
       event.results[event.results.length - 1][0].confidence < 0.5
     ) {
       let transcriptText = event.results[event.results.length - 1][0].transcript.replace(/\s+/g, '')
-      for (const w of W) {
+      for (const w of WORDS) {
         const { audio, lastTime, words, excludeWords, className, lastRecognitionText, timerId } =
           recognitionWordObject[w]
         // if (Date.now() - lastTime > 8000) {
@@ -145,7 +154,7 @@ const main = async () => {
     if (event.results[event.results.length - 1].isFinal) {
       //lastRecognitionTextを空にする
       // console.log('確定したのでlastRecognitionTextを空にする')
-      for (const w of W) {
+      for (const w of WORDS) {
         recognitionWordObject[w].lastRecognitionText = ''
       }
     }
@@ -184,7 +193,7 @@ const main = async () => {
     if (!twAudio.paused) {
       twAudio.currentTime = 0
     }
-    twAudio.play()
+    recognitionWordObject.X.audio.play()
   })
   twitter.addEventListener('mouseout', () => {
     twitter.innerHTML = 'Twitter'

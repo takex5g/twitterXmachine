@@ -57,9 +57,15 @@
       font-size: 14px;
     }
   }
+  .attention {
+    margin-top: 30px;
+    color: #808080;
+    font-size: 12px;
+    text-align: center;
+  }
 }
 .footer {
-  margin-top: 50px;
+  margin-top: 30px;
   p {
     color: #808080;
     font-size: 12px;
@@ -101,8 +107,14 @@
     }
     &.repost {
       .logo {
-        font-size: 160px;
+        font-size: 100px;
         margin-bottom: 20px;
+      }
+    }
+    &.quote {
+      .logo {
+        font-size: 80px;
+        white-space: nowrap;
       }
     }
   }
@@ -136,6 +148,18 @@
     z-index: 1;
     transition: 0.5s;
     & .repost {
+      opacity: 1;
+      animation: repost-animation 3s infinite cubic-bezier(0.4, 0, 1, 1);
+      animation-fill-mode: both;
+      animation-delay: 0.3s;
+    }
+  }
+  &.show-quote {
+    display: block;
+    opacity: 1;
+    z-index: 1;
+    transition: 0.5s;
+    & .quote {
       opacity: 1;
       animation: repost-animation 3s infinite cubic-bezier(0.4, 0, 1, 1);
       animation-fill-mode: both;
