@@ -88,10 +88,7 @@ const main = async () => {
 
   recognition.onresult = async (event: any) => {
     //confidenceが0.5以下の場合のみ反応する
-    if (
-      !event.results[event.results.length - 1].isFinal &&
-      event.results[event.results.length - 1][0].confidence < 0.5
-    ) {
+    if (!event.results[event.results.length - 1].isFinal) {
       let transcriptText = event.results[event.results.length - 1][0].transcript.replace(/\s+/g, '')
       for (const w of WORDS) {
         const { audio, lastTime, words, excludeWords, className, lastRecognitionText, timerId } =
