@@ -92,17 +92,9 @@ const main = async () => {
       for (const w of WORDS) {
         const { audio, lastTime, words, excludeWords, className, lastRecognitionText, timerId } =
           recognitionWordObject[w]
-        // if (Date.now() - lastTime > 8000) {
-        //   // 先頭がwordsのどれかに一致していたらlastRecognitionTextを空にする
-        //   if (words.some((word) => lastRecognitionText.indexOf(word) === 0)) {
-        //     console.log('8秒経過', lastRecognitionText)
-        //     recognitionWordObject[w].lastRecognitionText = ''
-        //   }
-        // }
         if (lastRecognitionText) {
           if (transcriptText.includes(lastRecognitionText)) {
             transcriptText = transcriptText.replace(lastRecognitionText, '')
-            // console.log('lastRecognitionText', lastRecognitionText, 'transcriptText', transcriptText)
           }
         }
         // transcriptTextが15文字以上の場合はlastRecognitionText.length文字目以降を使う
@@ -119,15 +111,11 @@ const main = async () => {
             words.some((word) => transcriptText.includes(word)) &&
             !excludeWords?.some((word) => transcriptText.includes(word))
           ) {
-            // console.log('last:', lastRecognitionText, 'trans:', transcriptText)
-
             recognitionWordObject[w].lastTime = Date.now()
             xContainer.classList.add(className)
-
             //完全一致した場合はlastRecognitionTextを空にする
             if (!words.some((word) => transcriptText === word)) {
               recognitionWordObject[w].lastRecognitionText = transcriptText
-              // console.log('lastRecognitionText', lastRecognitionText)
             }
 
             // audioが再生中の場合はaudio.currentTimeを0にする
@@ -135,7 +123,6 @@ const main = async () => {
               audio.currentTime = 0
             }
             audio.play()
-            // console.log('X!!!!')
             if (timerId) {
               clearTimeout(timerId)
             }
@@ -147,8 +134,6 @@ const main = async () => {
       }
     }
     if (event.results[event.results.length - 1].isFinal) {
-      //lastRecognitionTextを空にする
-      // console.log('確定したのでlastRecognitionTextを空にする')
       for (const w of WORDS) {
         recognitionWordObject[w].lastRecognitionText = ''
       }
