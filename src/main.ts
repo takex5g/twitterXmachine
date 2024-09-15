@@ -26,7 +26,6 @@ const main = async () => {
     }
   }
 
-  let twAudio = new Audio('./src/X.wav')
   const recognitionWordObject: RecognitionWordObject = {
     X: {
       audio: new Audio('./src/X.wav'),
@@ -131,7 +130,6 @@ const main = async () => {
               // console.log('lastRecognitionText', lastRecognitionText)
             }
 
-            // audio.play()
             // audioが再生中の場合はaudio.currentTimeを0にする
             if (!audio.paused) {
               audio.currentTime = 0
@@ -185,11 +183,9 @@ const main = async () => {
   //.twitterをホバーするとテキストが変わる
   const twitter = document.querySelector('.twitter') as HTMLDivElement
   twitter.addEventListener('mouseover', () => {
-    if (!twAudio) twAudio = new Audio('./src/X.wav')
+    if (!recognitionWordObject.X.audio) recognitionWordObject.X.audio = new Audio('./src/X.wav')
     twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
-    if (!twAudio.paused) {
-      twAudio.currentTime = 0
-    }
+    if (!recognitionWordObject.X.audio.paused) recognitionWordObject.X.audio.currentTime = 0
     recognitionWordObject.X.audio.play()
   })
   twitter.addEventListener('mouseout', () => {
