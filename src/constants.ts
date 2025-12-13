@@ -24,25 +24,25 @@ export const WORD_DEFINITIONS: Record<
   }
 > = {
   X: {
-    audioPath: `${BASE_URL}src/X.wav`,
+    audioPath: `${BASE_URL}/audio/X.wav`,
     words: ['Twitter', 'ツイッター', 'ついったー', 'ついった', 'ついたー'],
     excludeWords: [],
     className: 'show-x',
   },
   REPOST: {
-    audioPath: `${BASE_URL}src/repost.wav`,
+    audioPath: `${BASE_URL}/audio/repost.wav`,
     words: ['リツイート', 'りついーと', 'りついと'],
     excludeWords: ['引用リツイート', '引用りついーと', '引用りついと'],
     className: 'show-repost',
   },
   XS: {
-    audioPath: `${BASE_URL}src/Xs.wav`,
+    audioPath: `${BASE_URL}/audio/Xs.wav`,
     words: ['ツイート', 'ついーと', 'ついと'],
     excludeWords: ['リツイート', 'りついーと', 'りついと', '引用ツイート', '引用ついーと', '引用ついと'],
     className: 'show-xs',
   },
   QUOTE: {
-    audioPath: `${BASE_URL}src/quote.wav`,
+    audioPath: `${BASE_URL}/audio/quote.wav`,
     words: ['引用ツイート', '引用ついーと', '引用ついと', '引用リツイート', '引用りついーと', '引用りついと'],
     excludeWords: [],
     className: 'show-quote',
