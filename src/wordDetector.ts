@@ -12,7 +12,7 @@ export type WordState = {
   audio: HTMLAudioElement
   lastTime: number
   lastRecognitionText: string
-  timerId: NodeJS.Timeout | null
+  timerId: ReturnType<typeof setTimeout> | null
 }
 
 export type WordConfig = WordState & {

@@ -10,15 +10,16 @@
     "lint-fix": "eslint --cache --fix src/ && prettier --write src/"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.2.1",
-    "@typescript-eslint/parser": "^6.2.1",
-    "eslint": "^8.46.0",
-    "prettier": "^3.0.0",
-    "sass": "^1.64.2",
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5"
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
+    "sass": "^1.96.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.49.0",
+    "vite": "^7.2.7"
   },
   "dependencies": {
-    "eslint-config-prettier": "^8.9.0"
+    "eslint-config-prettier": "^10.1.8"
   }
 }
