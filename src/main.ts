@@ -1,180 +1,143 @@
 import { ButtonState } from './buttonState'
+import { WORD_TYPES } from './constants'
+import {
+  createWordConfigs,
+  preloadAudios,
+  processTranscript,
+  detectWord,
+  isInCooldown,
+  triggerDetection,
+  resetRecognitionTexts,
+  type WordConfigs,
+} from './wordDetector'
 
-const main = async () => {
-  const resultDiv = document.querySelector('#result-div') as HTMLDivElement
+// DOM要素を取得
+function getElements() {
+  return {
+    resultDiv: document.querySelector('#result-div') as HTMLDivElement,
+    xContainer: document.querySelector('.x-container') as HTMLDivElement,
+    startBtn: document.getElementById('start-btn') as HTMLElement,
+    twitter: document.querySelector('.twitter') as HTMLDivElement,
+  }
+}
+
+// 音声認識を初期化
+function createSpeechRecognition() {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition
   const recognition = new SpeechRecognition()
   recognition.lang = 'ja-JP'
-  // 暫定の認識結果も取得する
-  recognition.interimResults = true
+  recognition.interimResults = true // 暫定の認識結果も取得する
   recognition.continuous = true
+  return recognition
+}
 
-  // type W = 'X' | 'XS' | 'REPOST' | 'QUOTE'
-  const WORDS = ['X', 'XS', 'REPOST', 'QUOTE'] as const
-  type W = (typeof WORDS)[number]
-  type RecognitionWordObject = {
-    [key in W]: {
-      audio: HTMLAudioElement
-      lastTime: number
-      words: string[]
-      excludeWords?: string[]
-      className: string
-      lastRecognitionText: string
-      timerId: NodeJS.Timeout | null
+// 音声認識結果を処理
+function handleRecognitionResult(
+  event: any,
+  configs: WordConfigs,
+  xContainer: HTMLElement,
+  resultDiv: HTMLElement,
+  finalTranscriptRef: { value: string },
+) {
+  const lastResult = event.results[event.results.length - 1]
+
+  // 暫定結果の処理（単語検出）
+  if (!lastResult.isFinal) {
+    let transcript = lastResult[0].transcript.replace(/\s+/g, '')
+
+    for (const type of WORD_TYPES) {
+      const config = configs[type]
+      transcript = processTranscript(transcript, config.lastRecognitionText)
+
+      if (!isInCooldown(config) && detectWord(transcript, config)) {
+        triggerDetection(config, transcript, xContainer)
+      }
     }
   }
 
-  const recognitionWordObject: RecognitionWordObject = {
-    X: {
-      audio: new Audio('./src/X.wav'),
-      // 最後に反応してから1秒間は反応しないようにするための変数
-      lastTime: 0,
-      words: ['Twitter', 'ツイッター', 'ついったー', 'ついった', 'ついたー'],
-      excludeWords: [],
-      className: 'show-x',
-      lastRecognitionText: '',
-      timerId: null,
-    },
-    REPOST: {
-      audio: new Audio('./src/repost.wav'),
-      lastTime: 0,
-      words: ['リツイート', 'りついーと', 'りついと'],
-      excludeWords: ['引用リツイート', '引用りついーと', '引用りついと'],
-      className: 'show-repost',
-      lastRecognitionText: '',
-      timerId: null,
-    },
-    XS: {
-      audio: new Audio('./src/Xs.wav'),
-      lastTime: 0,
-      words: ['ツイート', 'ついーと', 'ついと'],
-      excludeWords: ['リツイート', 'りついーと', 'りついと', '引用ツイート', '引用ついーと', '引用ついと'],
-      className: 'show-xs',
-      lastRecognitionText: '',
-      timerId: null,
-    },
-    QUOTE: {
-      audio: new Audio('./src/quote.wav'),
-      lastTime: 0,
-      words: ['引用ツイート', '引用ついーと', '引用ついと', '引用リツイート', '引用りついーと', '引用りついと'],
-      excludeWords: [],
-      className: 'show-quote',
-      lastRecognitionText: '',
-      timerId: null,
-    },
+  // 確定時に状態をリセット
+  if (lastResult.isFinal) {
+    resetRecognitionTexts(configs)
   }
-  //ボタンのstart,stopの切り替えをするクラス
-  const buttonState = new ButtonState(document.getElementById('start-btn') as HTMLElement)
-  //認識が開始されたら、ボタンのテキストをstopにする
+
+  // 表示用テキストの更新
+  let interimTranscript = ''
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const transcript = event.results[i][0].transcript
+    if (event.results[i].isFinal) {
+      finalTranscriptRef.value += transcript
+    } else {
+      interimTranscript = transcript
+    }
+  }
+  resultDiv.innerHTML = finalTranscriptRef.value + '<i style="color:#ddd;">' + interimTranscript + '</i>'
+}
+
+// ボタンの設定
+function setupButton(buttonState: ButtonState, recognition: any, configs: WordConfigs) {
   buttonState.addEvent(
     () => {
       recognition.start()
-      // safariで音声認識をするためには、ユーザーの操作が必要なのでここでaudioを読み込む
-      for (const w of WORDS) {
-        recognitionWordObject[w].audio.load()
-      }
+      preloadAudios(configs) // Safari対応
     },
     () => recognition.stop(),
   )
+}
 
-  //.x-container
-  const xContainer = document.querySelector('.x-container') as HTMLDivElement
-
-  // 確定した(黒の)認識結果
-  let finalTranscript = ''
-
-  recognition.onresult = async (event: any) => {
-    //confidenceが0.5以下の場合のみ反応する
-    if (!event.results[event.results.length - 1].isFinal) {
-      let transcriptText = event.results[event.results.length - 1][0].transcript.replace(/\s+/g, '')
-      for (const w of WORDS) {
-        const { audio, lastTime, words, excludeWords, className, lastRecognitionText, timerId } =
-          recognitionWordObject[w]
-        if (lastRecognitionText) {
-          if (transcriptText.includes(lastRecognitionText)) {
-            transcriptText = transcriptText.replace(lastRecognitionText, '')
-          }
-        }
-        // transcriptTextが15文字以上の場合はlastRecognitionText.length文字目以降を使う
-        if (transcriptText.length > 15 && lastRecognitionText) {
-          //lastRecognitionText.length -10文字目以降を使う
-          //lastRecognitionText.length - 10が0以下の場合は0を使う
-          const start = lastRecognitionText.length - 6 > 0 ? lastRecognitionText.length - 6 : 0
-          transcriptText = transcriptText.slice(start)
-        }
-
-        if (Date.now() - lastTime > 3000) {
-          //excludeWordsがある場合は、transcriptTextにexcludeWordsが含まれていたら反応しない
-          if (
-            words.some((word) => transcriptText.includes(word)) &&
-            !excludeWords?.some((word) => transcriptText.includes(word))
-          ) {
-            recognitionWordObject[w].lastTime = Date.now()
-            xContainer.classList.add(className)
-            //完全一致した場合はlastRecognitionTextを空にする
-            if (!words.some((word) => transcriptText === word)) {
-              recognitionWordObject[w].lastRecognitionText = transcriptText
-            }
-
-            // audioが再生中の場合はaudio.currentTimeを0にする
-            if (!audio.paused) {
-              audio.currentTime = 0
-            }
-            audio.play()
-            if (timerId) {
-              clearTimeout(timerId)
-            }
-            recognitionWordObject[w].timerId = setTimeout(() => {
-              xContainer.classList.remove(className)
-            }, 3000)
-          }
-        }
-      }
-    }
-    if (event.results[event.results.length - 1].isFinal) {
-      for (const w of WORDS) {
-        recognitionWordObject[w].lastRecognitionText = ''
-      }
-    }
-
-    let interimTranscript = '' // 暫定(灰色)の認識結果
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript
-
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript
-      } else {
-        interimTranscript = transcript
-      }
-
-      resultDiv.innerHTML = finalTranscript + '<i style="color:#ddd;">' + interimTranscript + '</i>'
-    }
-  }
-  recognition.error = (event: any) => {
+// 認識イベントの設定
+function setupRecognitionEvents(recognition: any, buttonState: ButtonState) {
+  recognition.onerror = (event: any) => {
     console.log('エラーが発生しました。', event.error)
     buttonState.changeState('start')
   }
+
   recognition.onaudiostart = () => {
     buttonState.changeState('stop')
     console.log('録音が開始されました。')
   }
-  //録音が終了したら、ボタンのテキストをstartにする
+
   recognition.onend = () => {
     buttonState.changeState('start')
     console.log('音声認識が終了しました。')
   }
-  //.twitterをホバーするとテキストが変わる
-  const twitter = document.querySelector('.twitter') as HTMLDivElement
+}
+
+// Twitterホバーイベントの設定
+function setupTwitterHover(twitter: HTMLElement, configs: WordConfigs) {
+  const xConfig = configs.X
+
   twitter.addEventListener('mouseover', () => {
-    if (!recognitionWordObject.X.audio) recognitionWordObject.X.audio = new Audio('./src/X.wav')
     twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
-    if (!recognitionWordObject.X.audio.paused) recognitionWordObject.X.audio.currentTime = 0
-    recognitionWordObject.X.audio.play()
+    if (!xConfig.audio.paused) {
+      xConfig.audio.currentTime = 0
+    }
+    xConfig.audio.play()
   })
+
   twitter.addEventListener('mouseout', () => {
     twitter.innerHTML = 'Twitter'
   })
 }
+
+// メイン処理
+function main() {
+  const { resultDiv, xContainer, startBtn, twitter } = getElements()
+  const recognition = createSpeechRecognition()
+  const configs = createWordConfigs()
+  const buttonState = new ButtonState(startBtn)
+  const finalTranscriptRef = { value: '' } // 確定した認識結果
+
+  // イベント設定
+  setupButton(buttonState, recognition, configs)
+  setupRecognitionEvents(recognition, buttonState)
+  setupTwitterHover(twitter, configs)
+
+  // 認識結果の処理
+  recognition.onresult = (event: any) => {
+    handleRecognitionResult(event, configs, xContainer, resultDiv, finalTranscriptRef)
+  }
+}
+
 main()
