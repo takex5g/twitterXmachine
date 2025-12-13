@@ -1,27 +1,18 @@
-import {
-  WORD_TYPES,
-  WORD_DEFINITIONS,
-  COOLDOWN_MS,
-  DISPLAY_DURATION_MS,
-  MAX_TRANSCRIPT_LENGTH,
-  TRANSCRIPT_SLICE_OFFSET,
-} from './constants'
+import { WORD_TYPES, WORD_DEFINITIONS, DISPLAY_DURATION_MS } from './constants'
 import type { WordType } from './constants'
 
-export type WordState = {
+export type WordConfig = {
   audio: HTMLAudioElement
-  lastTime: number
-  lastRecognitionText: string
-  timerId: ReturnType<typeof setTimeout> | null
-}
-
-export type WordConfig = WordState & {
   words: string[]
   excludeWords: string[]
   className: string
+  timerId: ReturnType<typeof setTimeout> | null
 }
 
 export type WordConfigs = Record<WordType, WordConfig>
+
+// 検出済みの単語位置を記録（単語タイプ -> 検出位置）
+const detectedPositions = new Map<WordType, number>()
 
 /** 単語設定を初期化する */
 export function createWordConfigs(): WordConfigs {
@@ -30,12 +21,10 @@ export function createWordConfigs(): WordConfigs {
     const def = WORD_DEFINITIONS[type]
     configs[type] = {
       audio: new Audio(def.audioPath),
-      lastTime: 0,
-      lastRecognitionText: '',
-      timerId: null,
       words: def.words,
       excludeWords: def.excludeWords,
       className: def.className,
+      timerId: null,
     }
   }
   return configs
@@ -48,47 +37,26 @@ export function preloadAudios(configs: WordConfigs): void {
   }
 }
 
-/** テキストを前処理する（前回の認識結果を除去、長すぎる場合は末尾を使用） */
-export function processTranscript(transcript: string, lastText: string): string {
-  let processed = transcript.replace(/\s+/g, '')
-
-  if (lastText && processed.includes(lastText)) {
-    processed = processed.replace(lastText, '')
+/** 単語の位置を検索（除外ワードを考慮） */
+function findWordPosition(transcript: string, config: WordConfig): number {
+  // 除外ワードが含まれている場合は-1
+  if (config.excludeWords.some((word) => transcript.includes(word))) {
+    return -1
   }
 
-  if (processed.length > MAX_TRANSCRIPT_LENGTH && lastText) {
-    const start = Math.max(0, lastText.length - TRANSCRIPT_SLICE_OFFSET)
-    processed = processed.slice(start)
+  // 最初に見つかった単語の位置を返す
+  for (const word of config.words) {
+    const pos = transcript.indexOf(word)
+    if (pos !== -1) {
+      return pos
+    }
   }
-
-  return processed
-}
-
-/** 単語が検出されたかチェックする */
-export function detectWord(transcript: string, config: WordConfig): boolean {
-  const hasWord = config.words.some((word) => transcript.includes(word))
-  const hasExclude = config.excludeWords.some((word) => transcript.includes(word))
-  return hasWord && !hasExclude
-}
-
-/** 単語が完全一致かどうかチェックする */
-export function isExactMatch(transcript: string, config: WordConfig): boolean {
-  return config.words.some((word) => transcript === word)
-}
-
-/** クールダウン中かどうかチェックする */
-export function isInCooldown(config: WordConfig): boolean {
-  return Date.now() - config.lastTime <= COOLDOWN_MS
+  return -1
 }
 
 /** 検出時のアクションを実行する */
-export function triggerDetection(config: WordConfig, transcript: string, container: HTMLElement): void {
-  config.lastTime = Date.now()
+function triggerDetection(config: WordConfig, container: HTMLElement): void {
   container.classList.add(config.className)
-
-  if (!isExactMatch(transcript, config)) {
-    config.lastRecognitionText = transcript
-  }
 
   // オーディオ再生
   if (!config.audio.paused) {
@@ -107,9 +75,29 @@ export function triggerDetection(config: WordConfig, transcript: string, contain
   }, DISPLAY_DURATION_MS)
 }
 
-/** 認識確定時に状態をリセットする */
-export function resetRecognitionTexts(configs: WordConfigs): void {
+/**
+ * 差分検出方式で単語を検出する
+ * 同じ位置の単語には反応せず、新しい位置に出現した場合のみ反応
+ */
+export function detectAndTrigger(
+  transcript: string,
+  configs: WordConfigs,
+  container: HTMLElement,
+): void {
+  const normalizedTranscript = transcript.replace(/\s+/g, '')
+
   for (const type of WORD_TYPES) {
-    configs[type].lastRecognitionText = ''
+    const config = configs[type]
+    const pos = findWordPosition(normalizedTranscript, config)
+
+    if (pos !== -1 && pos !== detectedPositions.get(type)) {
+      detectedPositions.set(type, pos)
+      triggerDetection(config, container)
+    }
   }
+}
+
+/** 認識確定時に検出位置をリセットする */
+export function resetDetectedPositions(): void {
+  detectedPositions.clear()
 }

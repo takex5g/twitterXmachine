@@ -1,13 +1,9 @@
 import { ButtonState } from './buttonState'
-import { WORD_TYPES } from './constants'
 import {
   createWordConfigs,
   preloadAudios,
-  processTranscript,
-  detectWord,
-  isInCooldown,
-  triggerDetection,
-  resetRecognitionTexts,
+  detectAndTrigger,
+  resetDetectedPositions,
   type WordConfigs,
 } from './wordDetector'
 
@@ -42,37 +38,28 @@ function handleRecognitionResult(
   finalTranscriptRef: { value: string },
 ) {
   const lastResult = event.results[event.results.length - 1]
+  const transcript = lastResult[0].transcript
 
-  // 暫定結果の処理（単語検出）
-  if (!lastResult.isFinal) {
-    let transcript = lastResult[0].transcript.replace(/\s+/g, '')
+  // 暫定・確定問わず単語検出を実行
+  detectAndTrigger(transcript, configs, xContainer)
 
-    for (const type of WORD_TYPES) {
-      const config = configs[type]
-      transcript = processTranscript(transcript, config.lastRecognitionText)
-
-      if (!isInCooldown(config) && detectWord(transcript, config)) {
-        triggerDetection(config, transcript, xContainer)
-      }
-    }
-  }
-
-  // 確定時に状態をリセット
+  // 確定時に検出位置をリセット
   if (lastResult.isFinal) {
-    resetRecognitionTexts(configs)
+    resetDetectedPositions()
   }
 
   // 表示用テキストの更新
   let interimTranscript = ''
   for (let i = event.resultIndex; i < event.results.length; i++) {
-    const transcript = event.results[i][0].transcript
+    const text = event.results[i][0].transcript
     if (event.results[i].isFinal) {
-      finalTranscriptRef.value += transcript
+      finalTranscriptRef.value += text
     } else {
-      interimTranscript = transcript
+      interimTranscript = text
     }
   }
-  resultDiv.innerHTML = finalTranscriptRef.value + '<i style="color:#ddd;">' + interimTranscript + '</i>'
+  resultDiv.innerHTML =
+    finalTranscriptRef.value + '<i style="color:#ddd;">' + interimTranscript + '</i>'
 }
 
 // ボタンの設定
@@ -137,6 +124,12 @@ function main() {
   // 認識結果の処理
   recognition.onresult = (event: any) => {
     handleRecognitionResult(event, configs, xContainer, resultDiv, finalTranscriptRef)
+  }
+
+  // 著作権表示
+  const copyright = document.getElementById('copyright')
+  if (copyright) {
+    copyright.textContent = `©2023-${new Date().getFullYear()} ゆうもや`
   }
 }
 

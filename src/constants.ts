@@ -1,10 +1,5 @@
 // 時間関連の定数（ミリ秒）
-export const COOLDOWN_MS = 3000 // 同じ単語に反応するまでのクールダウン
 export const DISPLAY_DURATION_MS = 3000 // 訂正表示の表示時間
-
-// テキスト処理の定数
-export const MAX_TRANSCRIPT_LENGTH = 15 // この長さを超えたら末尾を切り取る
-export const TRANSCRIPT_SLICE_OFFSET = 6 // 切り取り時のオフセット
 
 // ベースURL（Viteが自動的に設定）
 const BASE_URL = import.meta.env.BASE_URL
