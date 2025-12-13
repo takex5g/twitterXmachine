@@ -11,8 +11,25 @@ export type WordConfig = {
 
 export type WordConfigs = Record<WordType, WordConfig>
 
-// 検出済みの単語位置を記録（単語タイプ -> 検出位置）
-const detectedPositions = new Map<WordType, number>()
+/**
+ * 出現回数ベースの重複検出防止
+ *
+ * 【課題】
+ * Web Speech APIの暫定結果(interimResults)はリアルタイムに更新されるため、
+ * 同じ単語に対して何度も反応してしまう問題がある。
+ * 例: "ツイッター" → "ツイッターを" → "ツイッターを見た" と更新される度に反応
+ *
+ * 【解決策】
+ * 単語の「出現回数」を記録し、回数が増えた場合のみ反応する。
+ * - "ツイッターを見た" (count=1) → 初回なので反応、1を記録
+ * - "ツイッターを見た" (count=1) → 記録と同じなのでスキップ
+ * - "ツイッターでツイッターを" (count=2) → 増えたので反応、2を記録
+ *
+ * これにより位置ズレの問題も解決:
+ * - "ツイッターを" (count=1) → 反応、1を記録
+ * - "えーツイッターを" (count=1) → 位置は変わったが回数は同じなのでスキップ
+ */
+const detectedCounts = new Map<WordType, number>()
 
 /** 単語設定を初期化する */
 export function createWordConfigs(): WordConfigs {
@@ -37,21 +54,23 @@ export function preloadAudios(configs: WordConfigs): void {
   }
 }
 
-/** 単語の位置を検索（除外ワードを考慮） */
-function findWordPosition(transcript: string, config: WordConfig): number {
-  // 除外ワードが含まれている場合は-1
+/** テキスト内の単語出現回数をカウント */
+function countWordOccurrences(transcript: string, config: WordConfig): number {
+  // 除外ワードが含まれている場合は0
   if (config.excludeWords.some((word) => transcript.includes(word))) {
-    return -1
+    return 0
   }
 
-  // 最初に見つかった単語の位置を返す
+  // 各単語の出現回数を合計
+  let count = 0
   for (const word of config.words) {
-    const pos = transcript.indexOf(word)
-    if (pos !== -1) {
-      return pos
+    let pos = 0
+    while ((pos = transcript.indexOf(word, pos)) !== -1) {
+      count++
+      pos += word.length
     }
   }
-  return -1
+  return count
 }
 
 /** 検出時のアクションを実行する */
@@ -76,8 +95,8 @@ function triggerDetection(config: WordConfig, container: HTMLElement): void {
 }
 
 /**
- * 差分検出方式で単語を検出する
- * 同じ位置の単語には反応せず、新しい位置に出現した場合のみ反応
+ * 単語を検出する
+ * 出現回数が増えた場合のみ反応（同じ単語の重複検出を防ぐ）
  */
 export function detectAndTrigger(
   transcript: string,
@@ -88,16 +107,18 @@ export function detectAndTrigger(
 
   for (const type of WORD_TYPES) {
     const config = configs[type]
-    const pos = findWordPosition(normalizedTranscript, config)
+    const currentCount = countWordOccurrences(normalizedTranscript, config)
+    const prevCount = detectedCounts.get(type) ?? 0
 
-    if (pos !== -1 && pos !== detectedPositions.get(type)) {
-      detectedPositions.set(type, pos)
+    // 出現回数が増えた分だけ反応
+    if (currentCount > prevCount) {
+      detectedCounts.set(type, currentCount)
       triggerDetection(config, container)
     }
   }
 }
 
-/** 認識確定時に検出位置をリセットする */
+/** 認識確定時に検出カウントをリセットする */
 export function resetDetectedPositions(): void {
-  detectedPositions.clear()
+  detectedCounts.clear()
 }
