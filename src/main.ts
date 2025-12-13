@@ -91,18 +91,13 @@ function safeRestartRecognition(
   if (!isListeningRef.value) return
 
   try {
-    console.log('音声認識を自動再開します...', new Date().toLocaleTimeString())
     recognition.start()
-  } catch (e) {
-    console.error('再起動に失敗:', e)
-    // 少し待ってから再試行
+  } catch {
     setTimeout(() => {
       if (isListeningRef.value) {
         try {
           recognition.start()
-          console.log('再試行で起動成功')
-        } catch (e2) {
-          console.error('再試行も失敗:', e2)
+        } catch {
           isListeningRef.value = false
           buttonState.changeState('start')
         }
@@ -117,34 +112,23 @@ function setupRecognitionEvents(
   buttonState: ButtonState,
   isListeningRef: { value: boolean },
 ) {
-  // 回復可能なエラー
   const recoverableErrors = ['no-speech', 'aborted', 'network', 'audio-capture']
 
   recognition.onerror = (event: any) => {
-    console.log('エラーが発生しました。', event.error, new Date().toLocaleTimeString())
-
-    if (recoverableErrors.includes(event.error)) {
-      // onendで自動再開される
-      return
-    }
-    // 回復不可能なエラーは停止
-    console.log('回復不可能なエラーのため停止します')
+    if (recoverableErrors.includes(event.error)) return
     isListeningRef.value = false
     buttonState.changeState('start')
   }
 
   recognition.onaudiostart = () => {
     buttonState.changeState('stop')
-    console.log('録音が開始されました。', new Date().toLocaleTimeString())
   }
 
   recognition.onend = () => {
-    console.log('onend発火', 'isListening:', isListeningRef.value, new Date().toLocaleTimeString())
     if (isListeningRef.value) {
       safeRestartRecognition(recognition, buttonState, isListeningRef)
     } else {
       buttonState.changeState('start')
-      console.log('音声認識が終了しました。')
     }
   }
 }
