@@ -15,7 +15,7 @@ function getElements() {
     xContainer: document.querySelector('.x-container') as HTMLDivElement,
     startBtn: document.getElementById('start-btn') as HTMLElement,
     twitter: document.querySelector('.twitter') as HTMLDivElement,
-    attention: document.querySelector('.attention') as HTMLParagraphElement,
+    serialBtn: document.getElementById('serial-btn') as HTMLButtonElement,
   }
 }
 
@@ -181,33 +181,22 @@ function setupTwitterHover(twitter: HTMLElement, configs: WordConfigs) {
   }
 }
 
-// シリアルモードのセットアップ（5回クリックで突入）
+// シリアルモードのセットアップ
 function setupSerialMode(
-  attention: HTMLElement,
+  serialBtn: HTMLButtonElement,
   serialManager: SerialManager,
-  onSerialModeEnabled: () => void,
+  serialModeRef: { value: boolean },
 ) {
-  const REQUIRED_CLICKS = 5
-  let clickCount = 0
-  let lastClickTime = 0
-  const CLICK_TIMEOUT = 3000 // 3秒以内に5回クリック
-
-  attention.style.cursor = 'pointer'
-  attention.addEventListener('click', async () => {
-    const now = Date.now()
-    if (now - lastClickTime > CLICK_TIMEOUT) {
-      clickCount = 0
-    }
-    lastClickTime = now
-    clickCount++
-
-    if (clickCount >= REQUIRED_CLICKS) {
-      clickCount = 0
+  serialBtn.addEventListener('click', async () => {
+    if (serialManager.isConnected) {
+      await serialManager.disconnect()
+      serialBtn.classList.remove('connected')
+      serialModeRef.value = false
+    } else {
       const connected = await serialManager.connect()
       if (connected) {
-        attention.textContent = 'シリアル通信モード ON'
-        attention.style.color = '#00ff00'
-        onSerialModeEnabled()
+        serialBtn.classList.add('connected')
+        serialModeRef.value = true
       }
     }
   })
@@ -215,7 +204,7 @@ function setupSerialMode(
 
 // メイン処理
 function main() {
-  const { resultDiv, xContainer, startBtn, twitter, attention } = getElements()
+  const { resultDiv, xContainer, startBtn, twitter, serialBtn } = getElements()
   const recognition = createSpeechRecognition()
   const configs = createWordConfigs()
   const buttonState = new ButtonState(startBtn)
@@ -228,9 +217,7 @@ function main() {
   setupButton(buttonState, recognition, configs, isListeningRef)
   setupRecognitionEvents(recognition, buttonState, isListeningRef)
   setupTwitterHover(twitter, configs)
-  setupSerialMode(attention, serialManager, () => {
-    serialModeRef.value = true
-  })
+  setupSerialMode(serialBtn, serialManager, serialModeRef)
 
   // 認識結果の処理
   recognition.onresult = (event: any) => {

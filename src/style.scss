@@ -257,3 +257,33 @@
     transform: translate(100vw, -50%) scale(1);
   }
 }
+
+.serial-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: opacity 0.3s, background 0.3s;
+  z-index: 100;
+
+  // タッチデバイスでは非表示
+  @media (hover: none) and (pointer: coarse) {
+    display: none;
+  }
+
+  &:hover {
+    opacity: 0.6;
+  }
+
+  &.connected {
+    opacity: 1;
+    background: rgba(0, 255, 0, 0.2);
+  }
+}
