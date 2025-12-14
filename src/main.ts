@@ -6,6 +6,15 @@ import {
   resetDetectedPositions,
   type WordConfigs,
 } from './wordDetector'
+import type { WordType } from './constants'
+
+// WordTypeごとのシリアル送信値
+const SERIAL_VALUES: Record<WordType, string> = {
+  X: '1', // Twitter
+  POST: '2', // ツイート
+  REPOST: '3', // リツイート
+  QUOTE: '4', // 引用ツイート
+}
 import { SerialManager } from './serialManager'
 
 // DOM要素を取得
@@ -38,13 +47,13 @@ function handleRecognitionResult(
   xContainer: HTMLElement,
   resultDiv: HTMLElement,
   finalTranscriptRef: { value: string },
-  onDetect?: () => void,
+  onDetect?: (type: WordType) => void,
 ) {
   const lastResult = event.results[event.results.length - 1]
   const transcript = lastResult[0].transcript
 
   // 暫定・確定問わず単語検出を実行
-  detectAndTrigger(transcript, configs, xContainer, onDetect ? () => onDetect() : undefined)
+  detectAndTrigger(transcript, configs, xContainer, onDetect)
 
   // 確定時に検出位置をリセット
   if (lastResult.isFinal) {
@@ -222,8 +231,8 @@ function main() {
   // 認識結果の処理
   recognition.onresult = (event: any) => {
     const onDetect = serialModeRef.value
-      ? () => {
-          serialManager.send('1')
+      ? (type: WordType) => {
+          serialManager.send(SERIAL_VALUES[type])
         }
       : undefined
     handleRecognitionResult(event, configs, xContainer, resultDiv, finalTranscriptRef, onDetect)
