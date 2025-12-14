@@ -136,21 +136,49 @@ function setupRecognitionEvents(
   }
 }
 
+// タッチデバイスかどうかを判定
+function isTouchDevice(): boolean {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
+}
+
 // Twitterホバーイベントの設定
 function setupTwitterHover(twitter: HTMLElement, configs: WordConfigs) {
   const xConfig = configs.X
 
-  twitter.addEventListener('mouseover', () => {
-    twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
-    if (!xConfig.audio.paused) {
-      xConfig.audio.currentTime = 0
-    }
-    xConfig.audio.play()
-  })
+  if (isTouchDevice()) {
+    // スマートフォン：タップ→再生→遷移
+    twitter.addEventListener('click', (e) => {
+      e.preventDefault()
+      twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
 
-  twitter.addEventListener('mouseout', () => {
-    twitter.innerHTML = 'Twitter'
-  })
+      if (!xConfig.audio.paused) {
+        xConfig.audio.currentTime = 0
+      }
+      xConfig.audio.play()
+
+      // 再生終了後にリンクに遷移
+      xConfig.audio.onended = () => {
+        const href = twitter.getAttribute('href')
+        if (href) {
+          window.open(href, '_blank', 'noopener,noreferrer')
+        }
+        twitter.innerHTML = 'Twitter'
+      }
+    })
+  } else {
+    // PC：従来のホバー動作
+    twitter.addEventListener('mouseover', () => {
+      twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
+      if (!xConfig.audio.paused) {
+        xConfig.audio.currentTime = 0
+      }
+      xConfig.audio.play()
+    })
+
+    twitter.addEventListener('mouseout', () => {
+      twitter.innerHTML = 'Twitter'
+    })
+  }
 }
 
 // シリアルモードのセットアップ（5回クリックで突入）
