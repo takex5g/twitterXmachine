@@ -97,11 +97,13 @@ function triggerDetection(config: WordConfig, container: HTMLElement): void {
 /**
  * 単語を検出する
  * 出現回数が増えた場合のみ反応（同じ単語の重複検出を防ぐ）
+ * @param onDetect 検出時に呼ばれるコールバック（オプション）
  */
 export function detectAndTrigger(
   transcript: string,
   configs: WordConfigs,
   container: HTMLElement,
+  onDetect?: (type: WordType) => void,
 ): void {
   const normalizedTranscript = transcript.replace(/\s+/g, '')
 
@@ -114,6 +116,7 @@ export function detectAndTrigger(
     if (currentCount > prevCount) {
       detectedCounts.set(type, currentCount)
       triggerDetection(config, container)
+      onDetect?.(type)
     }
   }
 }

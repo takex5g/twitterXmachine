@@ -6,6 +6,7 @@ import {
   resetDetectedPositions,
   type WordConfigs,
 } from './wordDetector'
+import { SerialManager } from './serialManager'
 
 // DOM要素を取得
 function getElements() {
@@ -14,6 +15,7 @@ function getElements() {
     xContainer: document.querySelector('.x-container') as HTMLDivElement,
     startBtn: document.getElementById('start-btn') as HTMLElement,
     twitter: document.querySelector('.twitter') as HTMLDivElement,
+    attention: document.querySelector('.attention') as HTMLParagraphElement,
   }
 }
 
@@ -36,12 +38,13 @@ function handleRecognitionResult(
   xContainer: HTMLElement,
   resultDiv: HTMLElement,
   finalTranscriptRef: { value: string },
+  onDetect?: () => void,
 ) {
   const lastResult = event.results[event.results.length - 1]
   const transcript = lastResult[0].transcript
 
   // 暫定・確定問わず単語検出を実行
-  detectAndTrigger(transcript, configs, xContainer)
+  detectAndTrigger(transcript, configs, xContainer, onDetect ? () => onDetect() : undefined)
 
   // 確定時に検出位置をリセット
   if (lastResult.isFinal) {
@@ -150,23 +153,65 @@ function setupTwitterHover(twitter: HTMLElement, configs: WordConfigs) {
   })
 }
 
+// シリアルモードのセットアップ（5回クリックで突入）
+function setupSerialMode(
+  attention: HTMLElement,
+  serialManager: SerialManager,
+  onSerialModeEnabled: () => void,
+) {
+  const REQUIRED_CLICKS = 5
+  let clickCount = 0
+  let lastClickTime = 0
+  const CLICK_TIMEOUT = 3000 // 3秒以内に5回クリック
+
+  attention.style.cursor = 'pointer'
+  attention.addEventListener('click', async () => {
+    const now = Date.now()
+    if (now - lastClickTime > CLICK_TIMEOUT) {
+      clickCount = 0
+    }
+    lastClickTime = now
+    clickCount++
+
+    if (clickCount >= REQUIRED_CLICKS) {
+      clickCount = 0
+      const connected = await serialManager.connect()
+      if (connected) {
+        attention.textContent = 'シリアル通信モード ON'
+        attention.style.color = '#00ff00'
+        onSerialModeEnabled()
+      }
+    }
+  })
+}
+
 // メイン処理
 function main() {
-  const { resultDiv, xContainer, startBtn, twitter } = getElements()
+  const { resultDiv, xContainer, startBtn, twitter, attention } = getElements()
   const recognition = createSpeechRecognition()
   const configs = createWordConfigs()
   const buttonState = new ButtonState(startBtn)
   const finalTranscriptRef = { value: '' } // 確定した認識結果
   const isListeningRef = { value: false } // 音声認識中フラグ
+  const serialManager = new SerialManager()
+  const serialModeRef = { value: false } // シリアルモードフラグ
 
   // イベント設定
   setupButton(buttonState, recognition, configs, isListeningRef)
   setupRecognitionEvents(recognition, buttonState, isListeningRef)
   setupTwitterHover(twitter, configs)
+  setupSerialMode(attention, serialManager, () => {
+    serialModeRef.value = true
+  })
 
   // 認識結果の処理
   recognition.onresult = (event: any) => {
-    handleRecognitionResult(event, configs, xContainer, resultDiv, finalTranscriptRef)
+    const onDetect = serialModeRef.value
+      ? () => {
+          serialManager.send('1')
+        }
+      : undefined
+    handleRecognitionResult(event, configs, xContainer, resultDiv, finalTranscriptRef, onDetect)
   }
 
   // 著作権表示
