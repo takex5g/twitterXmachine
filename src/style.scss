@@ -130,14 +130,14 @@
       animation-delay: 0.3s;
     }
   }
-  &.show-xs {
+  &.show-post {
     display: block;
     opacity: 1;
     z-index: 1;
     transition: 0.5s;
-    & .xs {
+    & .post {
       opacity: 1;
-      animation: xs-animation 3s infinite cubic-bezier(0.4, 0, 1, 1);
+      animation: post-animation 3s infinite cubic-bezier(0.4, 0, 1, 1);
       animation-fill-mode: both;
       animation-delay: 0.3s;
     }
@@ -229,9 +229,9 @@
   }
 }
 
-@keyframes xs-animation {
+@keyframes post-animation {
   0% {
-    transform: translate(calc(-59vw - 300px), -50%) scale(1);
+    transform: translate(calc(-59vw - 400px), -50%) scale(1);
   }
   15% {
     transform: translate(-90%, -50%) scale(1.2);

@@ -30,7 +30,7 @@ npm run lint-fix  # Run ESLint and Prettier with auto-fix
 
 The app detects these word categories with associated corrections:
 - "Twitter/ツイッター" → plays X correction
-- "ツイート" (tweet) → plays X's (エックセズ) correction
+- "ツイート" (tweet) → plays Post (ポスト) correction
 - "リツイート" (retweet) → plays Repost correction
 - "引用ツイート/引用リツイート" (quote tweet) → plays Quote correction
 
