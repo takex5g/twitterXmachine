@@ -5,7 +5,7 @@ export const DISPLAY_DURATION_MS = 3000 // 訂正表示の表示時間
 const BASE_URL = import.meta.env.BASE_URL
 
 // 認識対象の単語タイプ
-export const WORD_TYPES = ['X', 'POST', 'REPOST', 'QUOTE'] as const
+export const WORD_TYPES = ['X', 'POST', 'REPOST'] as const
 export type WordType = (typeof WORD_TYPES)[number]
 
 // 各単語タイプの設定
@@ -27,19 +27,13 @@ export const WORD_DEFINITIONS: Record<
   REPOST: {
     audioPath: `${BASE_URL}/audio/repost.wav`,
     words: ['リツイート', 'りついーと', 'りついと'],
-    excludeWords: ['引用リツイート', '引用りついーと', '引用りついと'],
+    excludeWords: [],
     className: 'show-repost',
   },
   POST: {
     audioPath: `${BASE_URL}/audio/post.wav`,
     words: ['ツイート', 'ついーと', 'ついと'],
-    excludeWords: ['リツイート', 'りついーと', 'りついと', '引用ツイート', '引用ついーと', '引用ついと'],
+    excludeWords: ['リツイート', 'りついーと', 'りついと'],
     className: 'show-post',
-  },
-  QUOTE: {
-    audioPath: `${BASE_URL}/audio/quote.wav`,
-    words: ['引用ツイート', '引用ついーと', '引用ついと', '引用リツイート', '引用りついーと', '引用りついと'],
-    excludeWords: [],
-    className: 'show-quote',
   },
 }

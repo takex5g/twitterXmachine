@@ -13,7 +13,6 @@ const SERIAL_VALUES: Record<WordType, string> = {
   X: '1', // Twitter
   POST: '2', // ツイート
   REPOST: '3', // リツイート
-  QUOTE: '4', // 引用ツイート
 }
 import { SerialManager } from './serialManager'
 
