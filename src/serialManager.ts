@@ -37,6 +37,12 @@ export class SerialManager {
       return true
     } catch (error) {
       console.error('シリアルポート接続エラー:', error)
+      // ユーザーがキャンセルした場合はアラートを表示しない
+      if (error instanceof DOMException && error.name === 'NotFoundError') {
+        // ポート選択がキャンセルされた
+      } else {
+        alert('シリアルポートの接続に失敗しました')
+      }
       this._isConnected = false
       return false
     }
