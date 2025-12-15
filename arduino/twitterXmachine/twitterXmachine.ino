@@ -14,7 +14,7 @@ const int PIN_RETWEET = D9;   // D9: リツイート (受信値 '3')
 const int PIN_QUOTE   = D10;  // D10: 引用ツイート (受信値 '4')
 
 // パルス幅（ミリ秒）
-const unsigned long PULSE_DURATION = 40;
+const unsigned long PULSE_DURATION = 80;
 
 // ピン配列（インデックスで管理）
 const int OUTPUT_PINS[] = {PIN_TWITTER, PIN_TWEET, PIN_RETWEET, PIN_QUOTE};
