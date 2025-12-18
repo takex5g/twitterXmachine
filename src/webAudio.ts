@@ -2,6 +2,7 @@
 
 let audioContext: AudioContext | null = null
 const audioBuffers = new Map<string, AudioBuffer>()
+const arrayBufferCache = new Map<string, ArrayBuffer>()
 
 /** AudioContextを取得（遅延初期化） */
 export function getAudioContext(): AudioContext {
@@ -19,17 +20,36 @@ export async function resumeAudioContext(): Promise<void> {
   }
 }
 
+/**
+ * 音声ファイルをプリフェッチ（AudioContext不要）
+ * ページ読み込み時に呼び出すことで、ネットワーク遅延を解消
+ */
+export async function prefetchAudio(url: string): Promise<void> {
+  if (arrayBufferCache.has(url)) return
+  const response = await fetch(url)
+  const arrayBuffer = await response.arrayBuffer()
+  arrayBufferCache.set(url, arrayBuffer)
+}
+
 /** 音声ファイルをプリロード */
 export async function loadAudioBuffer(url: string): Promise<AudioBuffer> {
-  // キャッシュがあれば返す
+  // デコード済みキャッシュがあれば返す
   const cached = audioBuffers.get(url)
   if (cached) return cached
 
   const ctx = getAudioContext()
-  const response = await fetch(url)
-  const arrayBuffer = await response.arrayBuffer()
-  const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
 
+  // プリフェッチ済みならキャッシュから取得（クローンして使用）
+  let arrayBuffer: ArrayBuffer
+  const prefetched = arrayBufferCache.get(url)
+  if (prefetched) {
+    arrayBuffer = prefetched.slice(0) // decodeAudioDataはArrayBufferを消費するのでクローン
+  } else {
+    const response = await fetch(url)
+    arrayBuffer = await response.arrayBuffer()
+  }
+
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
   audioBuffers.set(url, audioBuffer)
   return audioBuffer
 }
