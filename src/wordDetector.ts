@@ -1,8 +1,10 @@
 import { WORD_TYPES, WORD_DEFINITIONS, DISPLAY_DURATION_MS } from './constants'
 import type { WordType } from './constants'
+import { loadAudioBuffer, playAudioBuffer, resumeAudioContext } from './webAudio'
 
 export type WordConfig = {
-  audio: HTMLAudioElement
+  audioBuffer: AudioBuffer | null
+  audioPath: string
   words: string[]
   excludeWords: string[]
   className: string
@@ -37,7 +39,8 @@ export function createWordConfigs(): WordConfigs {
   for (const type of WORD_TYPES) {
     const def = WORD_DEFINITIONS[type]
     configs[type] = {
-      audio: new Audio(def.audioPath),
+      audioBuffer: null,
+      audioPath: def.audioPath,
       words: def.words,
       excludeWords: def.excludeWords,
       className: def.className,
@@ -47,11 +50,17 @@ export function createWordConfigs(): WordConfigs {
   return configs
 }
 
-/** 全てのオーディオをプリロードする（Safari対応） */
-export function preloadAudios(configs: WordConfigs): void {
-  for (const type of WORD_TYPES) {
-    configs[type].audio.load()
-  }
+/** 全てのオーディオをプリロードする（Web Audio API版） */
+export async function preloadAudios(configs: WordConfigs): Promise<void> {
+  // AudioContextを再開（ユーザーインタラクション後に必要）
+  await resumeAudioContext()
+
+  // 全ての音声をプリロード
+  const promises = WORD_TYPES.map(async (type) => {
+    const config = configs[type]
+    config.audioBuffer = await loadAudioBuffer(config.audioPath)
+  })
+  await Promise.all(promises)
 }
 
 /** テキスト内の単語出現回数をカウント */
@@ -77,11 +86,10 @@ function countWordOccurrences(transcript: string, config: WordConfig): number {
 function triggerDetection(config: WordConfig, container: HTMLElement): void {
   container.classList.add(config.className)
 
-  // オーディオ再生
-  if (!config.audio.paused) {
-    config.audio.currentTime = 0
+  // Web Audio APIで再生
+  if (config.audioBuffer) {
+    playAudioBuffer(config.audioBuffer)
   }
-  config.audio.play()
 
   // 前のタイマーをクリア
   if (config.timerId) {

@@ -7,6 +7,7 @@ import {
   type WordConfigs,
 } from './wordDetector'
 import type { WordType } from './constants'
+import { playAudioBuffer } from './webAudio'
 
 // WordTypeごとのシリアル送信値
 const SERIAL_VALUES: Record<WordType, string> = {
@@ -159,28 +160,27 @@ function setupTwitterHover(twitter: HTMLElement, configs: WordConfigs) {
       e.preventDefault()
       twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
 
-      if (!xConfig.audio.paused) {
-        xConfig.audio.currentTime = 0
+      // Web Audio APIで再生
+      if (xConfig.audioBuffer) {
+        playAudioBuffer(xConfig.audioBuffer)
       }
-      xConfig.audio.play()
 
-      // 再生終了後にリンクに遷移
-      xConfig.audio.onended = () => {
+      // 一定時間後にリンクに遷移
+      setTimeout(() => {
         const href = twitter.getAttribute('href')
         if (href) {
           window.open(href, '_blank', 'noopener,noreferrer')
         }
         twitter.innerHTML = 'Twitter'
-      }
+      }, 1000) // 1秒後に遷移
     })
   } else {
     // PC：従来のホバー動作
     twitter.addEventListener('mouseover', () => {
       twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
-      if (!xConfig.audio.paused) {
-        xConfig.audio.currentTime = 0
+      if (xConfig.audioBuffer) {
+        playAudioBuffer(xConfig.audioBuffer)
       }
-      xConfig.audio.play()
     })
 
     twitter.addEventListener('mouseout', () => {
