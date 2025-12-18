@@ -7,6 +7,7 @@ import {
   type WordConfigs,
 } from './wordDetector'
 import type { WordType } from './constants'
+import { playAudioBuffer, playAudioFromUrl, resumeAudioContext, prefetchAudio } from './webAudio'
 
 // WordTypeごとのシリアル送信値
 const SERIAL_VALUES: Record<WordType, string> = {
@@ -154,33 +155,34 @@ function setupTwitterHover(twitter: HTMLElement, configs: WordConfigs) {
   const xConfig = configs.X
 
   if (isTouchDevice()) {
-    // スマートフォン：タップ→再生→遷移
-    twitter.addEventListener('click', (e) => {
+    // スマートフォン：タップ→再生→遷移（同じタブ）
+    twitter.addEventListener('click', async (e) => {
       e.preventDefault()
       twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
 
-      if (!xConfig.audio.paused) {
-        xConfig.audio.currentTime = 0
+      // Web Audio APIで再生（バッファがなければURLから直接再生）
+      await resumeAudioContext()
+      if (xConfig.audioBuffer) {
+        playAudioBuffer(xConfig.audioBuffer)
+      } else {
+        await playAudioFromUrl(xConfig.audioPath)
       }
-      xConfig.audio.play()
 
-      // 再生終了後にリンクに遷移
-      xConfig.audio.onended = () => {
+      // 一定時間後に同じタブで遷移
+      setTimeout(() => {
         const href = twitter.getAttribute('href')
         if (href) {
-          window.open(href, '_blank', 'noopener,noreferrer')
+          location.href = href
         }
-        twitter.innerHTML = 'Twitter'
-      }
+      }, 1000)
     })
   } else {
     // PC：従来のホバー動作
     twitter.addEventListener('mouseover', () => {
       twitter.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;𝕏&nbsp;&nbsp;&nbsp;&nbsp;'
-      if (!xConfig.audio.paused) {
-        xConfig.audio.currentTime = 0
+      if (xConfig.audioBuffer) {
+        playAudioBuffer(xConfig.audioBuffer)
       }
-      xConfig.audio.play()
     })
 
     twitter.addEventListener('mouseout', () => {
@@ -210,6 +212,14 @@ function setupSerialMode(
   })
 }
 
+// 音声ファイルをプリフェッチ（ページ読み込み時、AudioContext不要）
+function prefetchAllAudios(configs: WordConfigs): void {
+  for (const type in configs) {
+    const config = configs[type as WordType]
+    prefetchAudio(config.audioPath)
+  }
+}
+
 // メイン処理
 function main() {
   const { resultDiv, xContainer, startBtn, twitter, serialBtn } = getElements()
@@ -220,6 +230,9 @@ function main() {
   const isListeningRef = { value: false } // 音声認識中フラグ
   const serialManager = new SerialManager()
   const serialModeRef = { value: false } // シリアルモードフラグ
+
+  // ページ読み込み時に音声ファイルをプリフェッチ（ネットワーク遅延を解消）
+  prefetchAllAudios(configs)
 
   // イベント設定
   setupButton(buttonState, recognition, configs, isListeningRef)
